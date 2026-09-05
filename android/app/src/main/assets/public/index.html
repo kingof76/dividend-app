@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>배당금 캘린더 V_0.3</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: #f8fafc; color: #333; padding: 12px; max-width: 480px; margin: 0 auto; padding-bottom: 40px; }
+        
+        .card { background: #fff; border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+        
+        .summary-header-grid { 
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px; 
+            padding: 4px 0;
+        }
+
+        .year-select-box {
+            justify-self: start;
+            width: 100%;
+            max-width: 90px;
+            height: 32px;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 16px;
+            padding: 0 10px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #1e293b;
+            cursor: pointer;
+            outline: none;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .main-app-title { 
+            justify-self: center;
+            font-size: 1.25rem; 
+            font-weight: 900; 
+            letter-spacing: -0.5px; 
+            color: #1e293b;
+            white-space: nowrap;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .summary-badge {
+            justify-self: end;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 32px;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: #ffffff;
+            padding: 0 12px;
+            border-radius: 16px;
+            font-size: 0.82rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(37, 99, 235, 0.25);
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .summary-badge:hover { transform: translateY(-1px); }
+
+        .section-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #475569;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin: 0;
+        }
+        .section-title::before {
+            content: '';
+            display: inline-block;
+            width: 3px;
+            height: 11px;
+            background-color: #2563eb;
+            border-radius: 2px;
+        }
+
+        .account-grid { display: flex; gap: 4px; overflow-x: auto; margin-top: 8px; padding-bottom: 2px; }
+        .account-box {
+            border-radius: 8px;
+            padding: 8px 4px;
+            min-width: 72px;
+            flex: 1;
+            text-align: center;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+        
+        .bg-pastel-blue { background-color: #eff6ff; border-color: #dbeafe; }
+        .bg-pastel-green { background-color: #f0fdf4; border-color: #dcfce7; }
+        .bg-pastel-purple { background-color: #faf5ff; border-color: #f3e8ff; }
+        .bg-pastel-yellow { background-color: #fefce8; border-color: #fef9c3; }
+        .bg-pastel-orange { background-color: #fff7ed; border-color: #ffedd5; }
+
+        .account-box:hover { transform: translateY(-2px); filter: brightness(0.97); }
+        
+        .account-name { font-size: 0.62rem; color: #475569; margin-bottom: 2px; white-space: nowrap; font-weight: 600; }
+        .account-val { font-size: 0.72rem; font-weight: bold; color: #0f172a; white-space: nowrap; }
+
+        .slim-input, select, input[type="text"], input[type="date"], input[type="number"] {
+            width: 100%;
+            padding: 3px 6px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            height: 30px;
+        }
+
+        .flex-row { display: flex; gap: 4px; margin-bottom: 6px; align-items: center; }
+        
+        button.save-btn-mini {
+            padding: 0 8px;
+            height: 30px;
+            background: #2563eb;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-weight: bold;
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        
+        .search-box-wrapper { position: relative; margin-bottom: 6px; }
+        .autocomplete-list { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #ddd; border-top: none; border-radius: 0 0 8px 8px; max-height: 180px; overflow-y: auto; z-index: 50; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .autocomplete-item { padding: 6px 8px; font-size: 0.8rem; cursor: pointer; border-bottom: 1px solid #f1f5f9; }
+        .autocomplete-item:hover { background: #f8fafc; }
+
+        .quick-stocks-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .quick-stocks-container { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+        
+        .quick-stock-tag {
+            display: inline-flex;
+            align-items: center;
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #dbeafe;
+            border-radius: 12px;
+            padding: 2px 7px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .quick-stock-tag.selected { background: #2563eb; color: #ffffff; border-color: #1d4ed8; font-weight: bold; }
+        .quick-stock-del { margin-left: 3px; font-size: 0.5rem; opacity: 0.7; }
+
+        .calendar-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 8px; }
+        .calendar-cell { 
+            border-radius: 6px; 
+            padding: 6px 4px; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer; 
+            transition: all 0.15s ease;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+            border: 1px solid rgba(0,0,0,0.05);
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        .calendar-cell:hover { transform: translateY(-1px); filter: brightness(0.96); }
+        .calendar-cell.empty { opacity: 0.55; }
+        
+        .season-spring { background-color: #fdf2f8; border-color: #fbcfe8; }
+        .season-summer { background-color: #f0f9ff; border-color: #bae6fd; }
+        .season-autumn { background-color: #fff7ed; border-color: #ffedd5; }
+        .season-winter { background-color: #faf5ff; border-color: #f3e8ff; }
+
+        .month-label { font-size: 0.7rem; color: #475569; font-weight: 700; flex-shrink: 0; }
+        .month-amount { font-size: 0.68rem; font-weight: 800; color: #0f172a; text-align: right; white-space: nowrap; font-feature-settings: "tnum"; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; padding: 12px; z-index: 100; }
+        .modal-content { background: #fff; width: 100%; max-width: 420px; border-radius: 12px; display: flex; flex-direction: column; max-height: 85vh; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #eee; background: #fff; flex-shrink: 0; }
+        .modal-body-scroll { padding: 12px 16px; overflow-y: auto; flex-grow: 1; }
+        
+        .close-btn { background: #cbd5e1; color: #334155; width: 22px; height: 22px; border-radius: 50%; border: none; font-size: 0.75rem; font-weight: bold; cursor: pointer; display: inline-flex; justify-content: center; align-items: center; }
+        
+        .detail-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 8px; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; border-radius: 6px; cursor: pointer; transition: background 0.15s; }
+        .detail-item:hover { background-color: #f8fafc; }
+
+        .delete-btn { width: 20px; height: 20px; background: #fee2e2; color: #ef4444; border: none; border-radius: 50%; font-size: 0.65rem; font-weight: bold; cursor: pointer; display: inline-flex; justify-content: center; align-items: center; margin-left: 6px; flex-shrink: 0; }
+
+        .section-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; white-space: nowrap; }
+        .mini-btn-group { display: flex; gap: 3px; flex-shrink: 0; align-items: center; }
+        
+        .btn-header-action { 
+            padding: 2px 6px; 
+            font-size: 0.65rem; 
+            font-weight: 600; 
+            background: #f1f5f9; 
+            color: #475569; 
+            border: 1px solid #cbd5e1; 
+            border-radius: 5px; 
+            cursor: pointer;
+        }
+        .btn-header-action.reset-btn { background: #fef2f2; color: #ef4444; border-color: #fca5a5; }
+
+        .stock-info-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+        .stock-info-header { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid #2563eb; }
+        .stock-info-top-row { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+        .stock-info-title { font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; word-break: break-all; }
+        .stock-code-badge { font-size: 0.65rem; background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; font-weight: normal; white-space: nowrap; }
+        .seq-badge { font-size: 0.68rem; color: #2563eb; font-weight: bold; background: #dbeafe; padding: 3px 8px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
+
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .info-box { background: #fff; padding: 8px; border-radius: 6px; border: 1px solid #edf2f7; }
+        .info-box-label { font-size: 0.65rem; color: #64748b; margin-bottom: 2px; }
+        .info-box-val { font-size: 0.85rem; font-weight: bold; color: #0f172a; }
+        .info-box-val.highlight { color: #2563eb; }
+        .info-box-val.tax { color: #ef4444; }
+
+        .accumulated-summary-box { background: #fff; padding: 10px 12px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 8px; }
+        .accum-title-text { font-size: 0.75rem; color: #1e293b; font-weight: 800; word-break: break-all; line-height: 1.2; }
+        .accum-value-text { font-size: 0.9rem; font-weight: 800; color: #2563eb; text-align: right; white-space: nowrap; }
+        
+        .count-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: #f8fafc; padding: 8px 4px; border-radius: 6px; border: 1px solid #f1f5f9; }
+        .count-summary-card { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 2px; }
+        .count-card-label { font-size: 0.6rem; color: #64748b; font-weight: 600; margin-bottom: 2px; white-space: nowrap; }
+        .count-card-val { font-size: 0.78rem; font-weight: 800; color: #0f172a; }
+        .count-card-val.active { color: #2563eb; }
+
+        .btn-trash-restore { padding: 2px 6px; font-size: 0.65rem; background: #dcfce7; color: #15803d; border: 1px solid #86efac; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-trash-delete { padding: 2px 6px; font-size: 0.65rem; background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <div class="summary-header-grid">
+            <select id="yearSelect" class="year-select-box" onchange="changeYear(this.value)"></select>
+            <div class="main-app-title">배당금</div>
+            <div class="summary-badge" id="totalReceived" onclick="openAccountModal('전체')">0 원</div>
+        </div>
+        
+        <div style="border-top: 1px solid #f1f5f9; padding-top: 10px; margin-top: 4px;">
+            <h3 class="section-title">계좌별 수령 누적액</h3>
+        </div>
+        
+        <div class="account-grid">
+            <div class="account-box bg-pastel-blue" onclick="openAccountModal('하나증권')">
+                <div class="account-name">하나(ISA)</div>
+                <div class="account-val" id="accIsa">0원</div>
+            </div>
+            <div class="account-box bg-pastel-green" onclick="openAccountModal('한국증권')">
+                <div class="account-name">한국(IRP)</div>
+                <div class="account-val" id="accIrp">0원</div>
+            </div>
+            <div class="account-box bg-pastel-purple" onclick="openAccountModal('토스증권(일반)')">
+                <div class="account-name">토스일반</div>
+                <div class="account-val" id="accTossGeneral">0원</div>
+            </div>
+            <div class="account-box bg-pastel-yellow" onclick="openAccountModal('토스증권(연금저축)')">
+                <div class="account-name">토스연금</div>
+                <div class="account-val" id="accTossPension">0원</div>
+            </div>
+            <div class="account-box bg-pastel-orange" onclick="openAccountModal('신한은행')">
+                <div class="account-name">신한퇴직</div>
+                <div class="account-val" id="accShinhan">0원</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="section-header-row">
+            <h3 class="section-title">배당금 내역 추가</h3>
+            <div class="mini-btn-group">
+                <button class="btn-header-action" onclick="openTrashModal()">🗑️ 숨긴 종목</button>
+                <button class="btn-header-action" onclick="exportData()">백업</button>
+                <button class="btn-header-action" onclick="document.getElementById('importFile').click()">복구</button>
+                <button class="btn-header-action reset-btn" onclick="resetAllData()">초기화</button>
+                <input type="file" id="importFile" style="display: none;" accept=".json" onchange="importData(event)">
+            </div>
+        </div>
+        
+        <div style="margin-bottom: 6px; margin-top: 6px;">
+            <select id="accountSelect" class="slim-input" onchange="updateQuickStocks()">
+                <option value="토스증권(일반)">토스증권 (일반계좌)</option>
+                <option value="토스증권(연금저축)">토스증권 (연금저축)</option>
+                <option value="하나증권">하나증권 (ISA)</option>
+                <option value="한국증권">한국증권 (IRP)</option>
+                <option value="신한은행">신한은행 (퇴직연금)</option>
+            </select>
+        </div>
+
+        <div class="quick-stocks-header">
+            <span style="font-size: 0.65rem; color: #64748b; font-weight: 600;">현재 계좌의 보유 종목</span>
+        </div>
+        <div class="quick-stocks-container" id="quickStocksContainer"></div>
+
+        <div class="search-box-wrapper">
+            <input type="text" id="stockSearchInput" class="slim-input" placeholder="종목명 또는 코드 검색 (예: 삼성전자우, VOO, 채권)" oninput="filterStocks(); syncTagSelection();" autocomplete="off">
+            <div id="autocompleteList" class="autocomplete-list"></div>
+        </div>
+
+        <div class="flex-row">
+            <input type="date" id="receiveDate" class="slim-input" style="flex: 1.2;">
+            <input type="number" id="receiveAmount" class="slim-input" placeholder="세후 수령액(원)" style="flex: 1;">
+            <button class="save-btn-mini" onclick="addRecord()">종목저장</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 class="section-title"><span id="calendarYearLabel">2026</span>년 월별 배당 캘린더</h3>
+        <div class="calendar-grid" id="calendarGrid"></div>
+    </div>
+
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle" style="font-size: 0.95rem;">상세 내역</h3>
+                <button class="close-btn" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body-scroll" id="modalBody"></div>
+        </div>
+    </div>
+
+    <div class="modal" id="trashModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 style="font-size: 0.95rem;">보유했던 종목 (숨긴 목록)</h3>
+                <button class="close-btn" onclick="closeTrashModal()">✕</button>
+            </div>
+            <div class="modal-body-scroll" id="trashModalBody"></div>
+        </div>
+    </div>
+
+    <script>
+        const stockDatabase = [
+            { name: "삼성전자", code: "005930", exDate: "03-29 / 06-28 / 09-27 / 12-27", past1YearCount: 4, ytdCount: 3 },
+            { name: "삼성전자우", code: "005935", exDate: "03-29 / 06-28 / 09-27 / 12-27", past1YearCount: 4, ytdCount: 3 },
+            { name: "SK하이닉스", code: "000660", exDate: "03-29 / 06-28 / 09-27 / 12-27", past1YearCount: 4, ytdCount: 2 },
+            { name: "현대차", code: "005380", exDate: "03-29 / 06-28 / 09-27 / 12-27", past1YearCount: 4, ytdCount: 2 },
+            { name: "현대차우", code: "005385", exDate: "03-29 / 06-28 / 09-27 / 12-27", past1YearCount: 4, ytdCount: 2 },
+            { name: "현대차2우B", code: "005387", exDate: "03-29 / 06-28 / 09-27 / 12-27", past1YearCount: 4, ytdCount: 2 },
+            { name: "기아", code: "000270", exDate: "12-31", past1YearCount: 1, ytdCount: 1 },
+            { name: "LG에너지솔루션", code: "373220", exDate: "12-31", past1YearCount: 1, ytdCount: 1 },
+            { name: "삼성바이오로직스", code: "207940", exDate: "12-31", past1YearCount: 1, ytdCount: 1 },
+            { name: "삼성에스디에스", code: "018260", exDate: "12-31", past1YearCount: 1, ytdCount: 1 },
+            { name: "LG화학", code: "051910", exDate: "12-31", past1YearCount: 1, ytdCount: 1 },
+            { name: "LG화학우", code: "051915", exDate: "12-31", past1YearCount: 1, ytdCount: 1 },
+            { name: "KB금융", code: "105560", exDate: "분기배당", past1YearCount: 4, ytdCount: 2 },
+            { name: "신한지주", code: "055550", exDate: "분기배당", past1YearCount: 4, ytdCount: 2 },
+            { name: "우리금융지주", code: "316140", exDate: "분기배당", past1YearCount: 4, ytdCount: 2 },
+            { name: "하나금융지주", code: "086790", exDate: "분기배당", past1YearCount: 4, ytdCount: 2 },
+            { name: "KT&G", code: "033780", exDate: "분기배당", past1YearCount: 4, ytdCount: 2 },
+            { name: "POSCO홀딩스", code: "005490", exDate: "분기배당", past1YearCount: 4, ytdCount: 2 },
+            { name: "SK텔레콤", code: "017670", exDate: "분기배당", past1YearCount: 4, ytdCount: 2 },
+            { name: "TIGER 미국배당다우존스", code: "458730", exDate: "매월 말일", past1YearCount: 12, ytdCount: 8 },
+            { name: "TIGER 미국배당+7%프리미엄다우존스", code: "476570", exDate: "매월 말일", past1YearCount: 12, ytdCount: 8 },
+            { name: "TIGER 미국S&P500", code: "360750", exDate: "매월 말일", past1YearCount: 12, ytdCount: 8 },
+            { name: "TIGER 미국나스닥100", code: "133690", exDate: "매월 말일", past1YearCount: 12, ytdCount: 8 },
+            { name: "TIGER 코리아배당다우존스", code: "482120", exDate: "매월 말일", past1YearCount: 12, ytdCount: 8 },
+            { name: "TIGER 테슬라채권혼합", code: "437020", exDate: "매월 말일", past1YearCount: 12, ytdCount: 8 },
+            { name: "KODEX 미국배당다우존스", code: "473110", exDate: "매월 말일", past1YearCount: 12, ytdCount: 8 },
+            { name: "KODEX 미국S&P500", code: "379800", exDate: "매월 말일", past1YearCount: 12, ytdCount: 8 },
+            { name: "KODEX 미국나스닥100", code: "379810", exDate: "매월 말일", past1YearCount: 12, ytdCount: 8 },
+            { name: "KODEX AI전력핵심설비", code: "487320", exDate: "매월 말일", past1YearCount: 12, ytdCount: 8 },
+            { name: "KODEX 배당성장", code: "211900", exDate: "12-31", past1YearCount: 1, ytdCount: 1 },
+            { name: "SOL 미국배당다우존스", code: "446720", exDate: "매월 말일", past1YearCount: 12, ytdCount: 8 },
+            { name: "SOL 미국배당다우존스(H)", code: "446730", exDate: "매월 말일", past1YearCount: 12, ytdCount: 8 },
+            { name: "SOL 미국TOP5채권혼합50", code: "492330", exDate: "매월 말일", past1YearCount: 12, ytdCount: 8 },
+            { name: "ACE 미국배당다우존스", code: "453580", exDate: "매월 말일", past1YearCount: 12, ytdCount: 8 },
+            { name: "ACE 미국10년국채액티브", code: "463250", exDate: "매월 말일", past1YearCount: 12, ytdCount: 8 },
+            { name: "ACE 미국10년국채액티브(H)", code: "476550", exDate: "매월 말일", past1YearCount: 12, ytdCount: 8 },
+            { name: "RISE 미국S&P500", code: "360750", exDate: "매월 말일", past1YearCount: 12, ytdCount: 8 },
+            { name: "VOO", code: "VOO", exDate: "03-25 / 06-25 / 09-25 / 12-20", past1YearCount: 4, ytdCount: 2 },
+            { name: "SPY", code: "SPY", exDate: "03-18 / 06-17 / 09-16 / 12-16", past1YearCount: 4, ytdCount: 2 },
+            { name: "QQQ", code: "QQQ", exDate: "03-21 / 06-20 / 09-19 / 12-19", past1YearCount: 4, ytdCount: 2 },
+            { name: "QQQM", code: "QQQM", exDate: "03-21 / 06-20 / 09-19 / 12-19", past1YearCount: 4, ytdCount: 2 },
+            { name: "SCHD", code: "SCHD", exDate: "03-20 / 06-20 / 09-20 / 12-20", past1YearCount: 4, ytdCount: 2 },
+            { name: "JEPI", code: "JEPI", exDate: "매월 초", past1YearCount: 12, ytdCount: 8 },
+            { name: "JEPQ", code: "JEPQ", exDate: "매월 초", past1YearCount: 12, ytdCount: 8 },
+            { name: "TSLA", code: "TSLA", exDate: "배당 없음", past1YearCount: 0, ytdCount: 0 },
+            { name: "AAPL", code: "AAPL", exDate: "02-09 / 05-10 / 08-09 / 11-08", past1YearCount: 4, ytdCount: 3 },
+            { name: "NVDA", code: "NVDA", exDate: "03-06 / 06-05 / 09-04 / 12-04", past1YearCount: 4, ytdCount: 2 },
+            { name: "MSFT", code: "MSFT", exDate: "02-14 / 05-15 / 08-14 / 11-20", past1YearCount: 4, ytdCount: 3 },
+            { name: "GOOGL", code: "GOOGL", exDate: "03-11 / 06-10 / 09-09 / 12-09", past1YearCount: 4, ytdCount: 2 },
+            { name: "AMZN", code: "AMZN", exDate: "배당 없음", past1YearCount: 0, ytdCount: 0 },
+            { name: "국고채 3년", code: "BOND-KR3Y", exDate: "반기 지급", past1YearCount: 2, ytdCount: 1 },
+            { name: "국고채 10년", code: "BOND-KR10Y", exDate: "반기 지급", past1YearCount: 2, ytdCount: 1 },
+            { name: "회사채", code: "CORP-BOND", exDate: "분기/반기 지급", past1YearCount: 4, ytdCount: 2 },
+            { name: "신한은행 정기예금 이자", code: "BANK-DEPT", exDate: "만기/월지급", past1YearCount: 12, ytdCount: 8 },
+            { name: "신한은행 퇴직연금 RP", code: "SH-RP", exDate: "수시 지급", past1YearCount: 12, ytdCount: 8 },
+            { name: "KODEX 삼성전자채권혼합", code: "457550", exDate: "매월 말일", past1YearCount: 12, ytdCount: 8 }
+        ];
+
+        const baseRecords = [
+            { id: 1735728000001, account: "토스증권(일반)", stock: "RISE 미국S&P500", date: "2026-01-05", month: "2026-01", amount: 17462 },
+            { id: 1738492800001, account: "토스증권(일반)", stock: "SPY", date: "2026-02-02", month: "2026-02", amount: 933 },
+            { id: 1742179200001, account: "토스증권(일반)", stock: "GOOGL", date: "2026-03-17", month: "2026-03", amount: 7240 },
+            { id: 1743043200001, account: "토스증권(일반)", stock: "QQQM", date: "2026-03-27", month: "2026-03", amount: 21689 },
+            { id: 1743561600001, account: "토스증권(일반)", stock: "NVDA", date: "2026-04-02", month: "2026-04", amount: 527 },
+            { id: 1744080000001, account: "토스증권(일반)", stock: "VOO", date: "2026-04-07", month: "2026-04", amount: 52676 },
+            { id: 1744857600001, account: "토스증권(일반)", stock: "삼성전자", date: "2026-04-17", month: "2026-04", amount: 454910 },
+            { id: 1745462400001, account: "토스증권(일반)", stock: "현대차", date: "2026-04-24", month: "2026-04", amount: 417930 },
+            { id: 1745462400002, account: "토스증권(일반)", stock: "SK하이닉스", date: "2026-04-24", month: "2026-04", amount: 79320 },
+            { id: 1746499200001, account: "토스증권(일반)", stock: "KODEX AI전력핵심설비", date: "2026-05-06", month: "2026-05", amount: 2145 },
+            { id: 1747276800001, account: "토스증권(일반)", stock: "AAPL", date: "2026-05-15", month: "2026-05", amount: 10263 },
+            { id: 1748486400001, account: "토스증권(일반)", stock: "삼성전자", date: "2026-05-29", month: "2026-05", amount: 188840 },
+            { id: 1748486400002, account: "토스증권(일반)", stock: "우리금융지주", date: "2026-05-29", month: "2026-05", amount: 37400 },
+            { id: 1750041600001, account: "토스증권(일반)", stock: "GOOGL", date: "2026-06-16", month: "2026-06", amount: 8214 },
+            { id: 1751251200001, account: "토스증권(일반)", stock: "SK하이닉스", date: "2026-06-30", month: "2026-06", amount: 17465 },
+            { id: 1751337600001, account: "토스증권(일반)", stock: "VOO", date: "2026-07-01", month: "2026-07", amount: 117616 },
+            { id: 1755129600001, account: "토스증권(일반)", stock: "AAPL", date: "2026-08-14", month: "2026-08", amount: 9734 },
+            { id: 1755561600001, account: "토스증권(일반)", stock: "TIGER 코리아배당다우존스", date: "2026-08-19", month: "2026-08", amount: 148589 },
+            { id: 1756339200001, account: "토스증권(일반)", stock: "삼성전자", date: "2026-08-28", month: "2026-08", amount: 183530 },
+            { id: 1746316800001, account: "신한은행", stock: "SOL 미국TOP5채권혼합50", date: "2026-05-04", month: "2026-05", amount: 910 },
+            { id: 1746489600001, account: "신한은행", stock: "KODEX 미국S&P500", date: "2026-05-06", month: "2026-05", amount: 35518 },
+            { id: 1754179200001, account: "신한은행", stock: "SOL 미국배당다우존스(H)", date: "2026-08-03", month: "2026-08", amount: 18538 },
+            { id: 1754265600001, account: "신한은행", stock: "ACE 미국10년국채액티브", date: "2026-08-04", month: "2026-08", amount: 13578 },
+            { id: 1754265600002, account: "신한은행", stock: "ACE 미국10년국채액티브(H)", date: "2026-08-04", month: "2026-08", amount: 5920 },
+            { id: 1754265600003, account: "신한은행", stock: "TIGER 미국배당다우존스", date: "2026-08-04", month: "2026-08", amount: 17760 },
+            { id: 1756684800001, account: "신한은행", stock: "SOL 미국배당다우존스(H)", date: "2026-09-01", month: "2026-09", amount: 15548 },
+            { id: 1756684800002, account: "신한은행", stock: "TIGER 미국배당다우존스", date: "2026-09-01", month: "2026-09", amount: 14400 },
+            { id: 1756771200001, account: "신한은행", stock: "ACE 미국10년국채액티브", date: "2026-09-02", month: "2026-09", amount: 13826 },
+            { id: 1756771200002, account: "신한은행", stock: "ACE 미국10년국채액티브(H)", date: "2026-09-02", month: "2026-09", amount: 5920 },
+            { id: 1743000000001, account: "토스증권(일반)", stock: "KODEX 삼성전자채권혼합", date: "2026-04-01", month: "2026-04", amount: 17820 }
+        ];
+
+        let records = [];
+        let hiddenTags = [];
+        let availableYears = ["2026", "2027"];
+        let currentYear = "2026";
+        let currentSelectedMonth = null;
+        let currentAccountFilter = null;
+
+        function cleanAccountName(accName) {
+            if (!accName) return "토스증권(일반)";
+            const str = String(accName).replace(/\s+/g, '');
+            if (str.includes("토스") && !str.includes("연금")) return "토스증권(일반)";
+            return accName;
+        }
+
+        window.onload = function() {
+            const saved = localStorage.getItem('dividend_records_v03');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        let otherRecords = parsed.filter(item => cleanAccountName(item.account) !== "토스증권(일반)" && cleanAccountName(item.account) !== "신한은행");
+                        records = [...baseRecords, ...otherRecords];
+                    } else { records = [...baseRecords]; }
+                } catch(e) { records = [...baseRecords]; }
+            } else { records = [...baseRecords]; }
+
+            const savedHidden = localStorage.getItem('dividend_hidden_tags_v03');
+            if (savedHidden) {
+                try { hiddenTags = JSON.parse(savedHidden); } catch(e) { hiddenTags = []; }
+            }
+
+            records.forEach(r => {
+                if (r.stock) r.stock = r.stock.toUpperCase();
+                const y = r.date.substring(0, 4);
+                if (!availableYears.includes(y)) availableYears.push(y);
+            });
+            
+            hiddenTags = hiddenTags.map(k => k.toUpperCase());
+            availableYears.sort();
+
+            renderYearOptions();
+            saveToLocalStorage();
+            updateUI();
+        };
+
+        function saveToLocalStorage() {
+            localStorage.setItem('dividend_records_v03', JSON.stringify(records));
+            localStorage.setItem('dividend_hidden_tags_v03', JSON.stringify(hiddenTags));
+        }
+
+        function resetAllData() {
+            if (confirm("⚠️ 정말로 모든 내역을 초기화하시겠습니까?")) {
+                localStorage.removeItem('dividend_records_v03');
+                localStorage.removeItem('dividend_hidden_tags_v03');
+                records = [...baseRecords];
+                hiddenTags = [];
+                availableYears = ["2026", "2027"];
+                currentYear = "2026";
+                renderYearOptions();
+                saveToLocalStorage();
+                updateUI();
+                alert("초기화되었습니다.");
+            }
+        }
+
+        function renderYearOptions() {
+            const select = document.getElementById('yearSelect');
+            let html = '';
+            availableYears.forEach(y => { html += `<option value="${y}">${y}년</option>`; });
+            html += `<option value="ADD">+ 추가</option>`;
+            html += `<option value="DELETE">- 삭제</option>`;
+            select.innerHTML = html;
+            select.value = currentYear;
+        }
+
+        function changeYear(val) {
+            if (val === 'ADD') {
+                const newY = prompt('추가할 연도 입력 (예: 2027):');
+                if (newY && /^\d{4}$/.test(newY)) {
+                    if (!availableYears.includes(newY)) {
+                        availableYears.push(newY);
+                        availableYears.sort();
+                    }
+                    currentYear = newY;
+                }
+                renderYearOptions();
+            } else if (val === 'DELETE') {
+                deleteCurrentYear();
+                return;
+            } else { currentYear = val; }
+            document.getElementById('calendarYearLabel').innerText = currentYear;
+            updateUI();
+        }
+
+        function deleteCurrentYear() {
+            if (availableYears.length <= 1) { alert('최소 하나의 연도는 필요합니다.'); renderYearOptions(); return; }
+            const targetYear = currentYear;
+            if (confirm(`[${targetYear}년] 데이터를 삭제하시겠습니까?`)) {
+                records = records.filter(item => item.date.substring(0, 4) !== targetYear);
+                availableYears = availableYears.filter(y => y !== targetYear);
+                currentYear = availableYears[availableYears.length - 1];
+                saveToLocalStorage();
+                renderYearOptions();
+                document.getElementById('calendarYearLabel').innerText = currentYear;
+                updateUI();
+            } else { renderYearOptions(); }
+        }
+
+        function filterStocks() {
+            const input = document.getElementById('stockSearchInput');
+            const keyword = input.value.trim().toLowerCase();
+            const listContainer = document.getElementById('autocompleteList');
+
+            if (keyword === '') { listContainer.style.display = 'none'; return; }
+
+            const filtered = stockDatabase.filter(item => 
+                item.name.toLowerCase().includes(keyword) || item.code.toLowerCase().includes(keyword)
+            );
+
+            if (filtered.length === 0) {
+                listContainer.innerHTML = `<div class="autocomplete-item" onclick="selectStock('${input.value.toUpperCase()}')">직접 입력: "${input.value.toUpperCase()}"</div>`;
+            } else {
+                let html = '';
+                filtered.forEach(item => {
+                    html += `<div class="autocomplete-item" onclick="selectStock('${item.name.toUpperCase()}')">${item.name} <span>(${item.code})</span></div>`;
+                });
+                listContainer.innerHTML = html;
+            }
+            listContainer.style.display = 'block';
+        }
+
+        function toggleStockTag(stockName) {
+            const input = document.getElementById('stockSearchInput');
+            const targetUpper = stockName.toUpperCase();
+            if (input.value.trim().toUpperCase() === targetUpper) { input.value = ''; } 
+            else { input.value = targetUpper; }
+            document.getElementById('autocompleteList').style.display = 'none';
+            syncTagSelection();
+        }
+
+        function selectStock(stockName) {
+            document.getElementById('stockSearchInput').value = stockName.toUpperCase();
+            document.getElementById('autocompleteList').style.display = 'none';
+            syncTagSelection();
+        }
+
+        function syncTagSelection() {
+            const currentVal = document.getElementById('stockSearchInput').value.trim().toUpperCase();
+            document.querySelectorAll('.quick-stock-tag').forEach(tag => {
+                const tagStock = tag.getAttribute('data-stock');
+                if (tagStock && tagStock.toUpperCase() === currentVal) { tag.classList.add('selected'); } 
+                else { tag.classList.remove('selected'); }
+            });
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-box-wrapper') && !e.target.closest('.quick-stock-tag')) {
+                document.getElementById('autocompleteList').style.display = 'none';
+            }
+        });
+
+        function addRecord() {
+            const account = document.getElementById('accountSelect').value;
+            const stock = document.getElementById('stockSearchInput').value.trim().toUpperCase();
+            const date = document.getElementById('receiveDate').value;
+            const amount = Number(document.getElementById('receiveAmount').value);
+
+            if (!stock || !date || !amount) {
+                alert('종목, 날짜, 금액을 모두 정확히 입력해주세요.');
+                return;
+            }
+
+            const recYear = date.substring(0, 4);
+            if (!availableYears.includes(recYear)) {
+                availableYears.push(recYear);
+                availableYears.sort();
+                renderYearOptions();
+            }
+
+            const tagKey = (account + "_" + stock).toUpperCase();
+            hiddenTags = hiddenTags.filter(k => k !== tagKey);
+
+            records.push({ id: Date.now(), account, stock, date, month: date.substring(0, 7), amount });
+            
+            currentYear = recYear;
+            document.getElementById('yearSelect').value = currentYear;
+            document.getElementById('calendarYearLabel').innerText = currentYear;
+
+            saveToLocalStorage();
+            updateUI();
+            
+            document.getElementById('stockSearchInput').value = '';
+            document.getElementById('receiveAmount').value = '';
+            syncTagSelection();
+        }
+
+        function deleteRecord(id, event) {
+            if(event) event.stopPropagation();
+            records = records.filter(item => item.id !== id);
+            saveToLocalStorage();
+            updateUI();
+            if (currentSelectedMonth) openModal(currentSelectedMonth);
+            else if (currentAccountFilter) openAccountModal(currentAccountFilter);
+        }
+
+        function hideStockTag(stockName, event) {
+            event.stopPropagation();
+            const selectedAccount = document.getElementById('accountSelect').value;
+            const tagKey = (selectedAccount + "_" + stockName).toUpperCase();
+            if (!hiddenTags.includes(tagKey)) {
+                hiddenTags.push(tagKey);
+                saveToLocalStorage();
+                updateQuickStocks();
+            }
+        }
+
+        function openTrashModal() {
+            const modal = document.getElementById('trashModal');
+            const body = document.getElementById('trashModalBody');
+            
+            if (hiddenTags.length === 0) {
+                body.innerHTML = '<div style="text-align: center; color: #888; padding: 20px;">숨긴 종목이 없습니다.</div>';
+            } else {
+                let html = '';
+                hiddenTags.forEach(tagKey => {
+                    const parts = tagKey.split('_');
+                    const accName = parts[0];
+                    const stkName = parts.slice(1).join('_');
+                    const badgeText = getAccountBadgeName(accName);
+
+                    html += `
+                        <div class="detail-item">
+                            <div>
+                                <span style="background:#e2e8f0; padding:1px 4px; border-radius:4px; font-size:0.65rem; color:#334155; margin-right:4px;">${badgeText}</span>
+                                <b style="font-size: 0.85rem;">${stkName}</b>
+                            </div>
+                            <div style="display: flex; gap: 4px;">
+                                <button class="btn-trash-restore" onclick="restoreTag('${tagKey}')">복구</button>
+                                <button class="btn-trash-delete" onclick="permanentlyDeleteStock('${accName}', '${stkName}', '${tagKey}')">삭제</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                body.innerHTML = html;
+            }
+            modal.style.display = 'flex';
+        }
+
+        function closeTrashModal() { document.getElementById('trashModal').style.display = 'none'; }
+
+        function restoreTag(tagKey) {
+            hiddenTags = hiddenTags.filter(k => k !== tagKey);
+            saveToLocalStorage();
+            updateQuickStocks();
+            openTrashModal();
+        }
+
+        function permanentlyDeleteStock(accName, stockName, tagKey) {
+            if (confirm(`'${stockName}' 종목의 모든 과거 기록을 삭제하시겠습니까?`)) {
+                records = records.filter(item => !(cleanAccountName(item.account) === accName && item.stock.toUpperCase() === stockName.toUpperCase()));
+                hiddenTags = hiddenTags.filter(k => k !== tagKey);
+                saveToLocalStorage();
+                updateUI();
+                openTrashModal();
+            }
+        }
+
+        function getSeasonClass(monthNum) {
+            if (monthNum >= 3 && monthNum <= 5) return "season-spring";
+            if (monthNum >= 6 && monthNum <= 8) return "season-summer";
+            if (monthNum >= 9 && monthNum <= 11) return "season-autumn";
+            return "season-winter";
+        }
+
+        function formatFullAmount(amt) {
+            if (amt === 0) return '-';
+            return amt.toLocaleString() + '원';
+        }
+
+        function updateUI() {
+            let grandTotal = 0;
+            const accountTotals = { "토스증권(일반)": 0, "토스증권(연금저축)": 0, "하나증권": 0, "한국증권": 0, "신한은행": 0 };
+            const monthTotals = {};
+            for(let i=1; i<=12; i++) {
+                monthTotals[`${currentYear}-${String(i).padStart(2, '0')}`] = 0;
+            }
+
+            records.forEach(item => {
+                if (item.date.substring(0, 4) === currentYear) {
+                    const normAcc = cleanAccountName(item.account);
+                    grandTotal += item.amount;
+                    if (accountTotals[normAcc] !== undefined) accountTotals[normAcc] += item.amount;
+                    if (monthTotals[item.month] !== undefined) monthTotals[item.month] += item.amount;
+                }
+            });
+
+            document.getElementById('totalReceived').innerText = grandTotal.toLocaleString() + ' 원';
+            document.getElementById('accIsa').innerText = accountTotals["하나증권"].toLocaleString() + '원';
+            document.getElementById('accIrp').innerText = accountTotals["한국증권"].toLocaleString() + '원';
+            document.getElementById('accTossGeneral').innerText = accountTotals["토스증권(일반)"].toLocaleString() + '원';
+            document.getElementById('accTossPension').innerText = accountTotals["토스증권(연금저축)"].toLocaleString() + '원';
+            document.getElementById('accShinhan').innerText = accountTotals["신한은행"].toLocaleString() + '원';
+
+            updateQuickStocks();
+
+            const calendarGrid = document.getElementById('calendarGrid');
+            calendarGrid.innerHTML = '';
+
+            for(let i=1; i<=12; i++) {
+                const mStr = `${currentYear}-${String(i).padStart(2, '0')}`;
+                const amt = monthTotals[mStr] || 0;
+                calendarGrid.innerHTML += `
+                    <div class="calendar-cell ${getSeasonClass(i)} ${amt === 0 ? "empty" : ""}" onclick="openModal('${mStr}')">
+                        <span class="month-label">${i}월</span>
+                        <span class="month-amount">${formatFullAmount(amt)}</span>
+                    </div>
+                `;
+            }
+        }
+
+        function isKorean(text) { return /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(text); }
+
+        function updateQuickStocks() {
+            const selectedAccount = document.getElementById('accountSelect').value;
+            const quickContainer = document.getElementById('quickStocksContainer');
+            const accountStocksMap = new Map();
+            
+            records.forEach(item => {
+                if (cleanAccountName(item.account) === selectedAccount && item.stock) {
+                    const trimmedUpper = item.stock.trim().toUpperCase();
+                    const tagKey = (selectedAccount + "_" + trimmedUpper).toUpperCase();
+                    if (!hiddenTags.includes(tagKey) && !accountStocksMap.has(trimmedUpper)) {
+                        accountStocksMap.set(trimmedUpper, trimmedUpper);
+                    }
+                }
+            });
+
+            const stockList = Array.from(accountStocksMap.values());
+            if (stockList.length === 0) {
+                quickContainer.innerHTML = '<div style="font-size: 0.7rem; color: #94a3b8; padding: 2px 0;">표시할 보유 종목이 없습니다.</div>';
+                return;
+            }
+
+            const sortedStocks = [
+                ...stockList.filter(s => isKorean(s)).sort((a, b) => a.localeCompare(b, 'ko')),
+                ...stockList.filter(s => !isKorean(s)).sort((a, b) => a.localeCompare(b, 'en'))
+            ];
+
+            let quickHtml = '';
+            sortedStocks.forEach(stk => {
+                quickHtml += `
+                    <div class="quick-stock-tag" data-stock="${stk}" onclick="toggleStockTag('${stk}')">
+                        <span>${stk}</span>
+                        <span class="quick-stock-del" onclick="hideStockTag('${stk}', event)">✕</span>
+                    </div>
+                `;
+            });
+            quickContainer.innerHTML = quickHtml;
+            syncTagSelection();
+        }
+
+        function getAccountBadgeName(acc) {
+            const norm = cleanAccountName(acc);
+            if (norm === "토스증권(일반)") return "토스일반";
+            if (norm === "토스증권(연금저축)") return "토스연금";
+            if (norm === "하나증권") return "하나ISA";
+            if (norm === "한국증권") return "한국IRP";
+            if (norm === "신한은행") return "신한퇴직";
+            return norm;
+        }
+
+        function inspectStockDetail(stockName, recordDate, netAmount) {
+            const targetUpper = stockName.toUpperCase();
+            const dbItem = stockDatabase.find(s => s.name.toUpperCase() === targetUpper || s.code.toUpperCase() === targetUpper) || {
+                name: targetUpper, code: targetUpper, exDate: "증권사 공시 참조", past1YearCount: 12, ytdCount: 8
+            };
+
+            const grossAmount = Math.round(netAmount / (1 - 0.154));
+            const taxAmount = grossAmount - netAmount;
+
+            const yearAllRecords = records.filter(r => r.date.substring(0, 4) === currentYear && r.stock.toUpperCase() === targetUpper)
+                                          .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            const totalYearAmount = yearAllRecords.reduce((sum, r) => sum + r.amount, 0);
+            let sequenceIndex = yearAllRecords.findIndex(r => r.date === recordDate && r.amount === netAmount) + 1;
+            if (sequenceIndex === 0) sequenceIndex = yearAllRecords.length;
+
+            const visualCardHtml = `
+                <div class="stock-info-card">
+                    <div class="stock-info-header">
+                        <div class="stock-info-top-row">
+                            <span class="seq-badge">${currentYear}년 ${sequenceIndex}번째 수령건</span>
+                            <span class="stock-code-badge">${dbItem.code}</span>
+                        </div>
+                        <div class="stock-info-title">${dbItem.name}</div>
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-box"><div class="info-box-label">세전 배당금액</div><div class="info-box-val">${grossAmount.toLocaleString()}원</div></div>
+                        <div class="info-box"><div class="info-box-label">원천징수 세금 (15.4%)</div><div class="info-box-val tax">-${taxAmount.toLocaleString()}원</div></div>
+                        <div class="info-box"><div class="info-box-label">실수령 배당금액 (세후)</div><div class="info-box-val highlight">${netAmount.toLocaleString()}원</div></div>
+                        <div class="info-box"><div class="info-box-label">주요 배당락일 정보</div><div class="info-box-val" style="font-size: 0.75rem;">${dbItem.exDate}</div></div>
+                    </div>
+                    <div class="accumulated-summary-box">
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 4px;">
+                            <span class="accum-title-text">올해 [${dbItem.name}] 누적 수령액</span>
+                            <span class="accum-value-text">${totalYearAmount.toLocaleString()}원</span>
+                        </div>
+                        <div class="count-summary-grid">
+                            <div class="count-summary-card"><span class="count-card-label">최근 1년 지급</span><span class="count-card-val">총 ${dbItem.past1YearCount}회</span></div>
+                            <div class="count-summary-card" style="border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;"><span class="count-card-label">올해 종목 지급</span><span class="count-card-val">총 ${dbItem.ytdCount}회</span></div>
+                            <div class="count-summary-card"><span class="count-card-label">내 계좌 수령</span><span class="count-card-val active">총 ${yearAllRecords.length}회</span></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const backBtn = `<button onclick="${currentSelectedMonth ? `openModal('${currentSelectedMonth}')` : `openAccountModal('${currentAccountFilter}')`}" style="margin-bottom: 8px; padding: 4px 10px; font-size: 0.72rem; background: #e2e8f0; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; color:#334155;">← 리스트로 돌아가기</button>`;
+            document.getElementById('modalBody').innerHTML = backBtn + visualCardHtml;
+        }
+
+        function openModal(month) {
+            currentSelectedMonth = month;
+            currentAccountFilter = null;
+            document.getElementById('modalTitle').innerText = `${month} 배당 상세 리스트`;
+            
+            const monthData = records.filter(item => item.month === month).sort((a, b) => new Date(b.date) - new Date(a.date));
+            let html = monthData.length === 0 ? '<div style="text-align: center; color: #888; padding: 20px;">내역이 없습니다.</div>' : '';
+            
+            monthData.forEach(i => {
+                html += `
+                    <div class="detail-item" onclick="inspectStockDetail('${i.stock}', '${i.date}', ${i.amount})">
+                        <div style="flex: 1; min-width: 0; padding-right: 8px;">
+                            <div style="font-size: 0.68rem; color: #64748b;">${i.date} <span style="background:#e2e8f0; padding:1px 4px; border-radius:4px; font-size:0.6rem; color:#334155; margin-left:3px;">${getAccountBadgeName(i.account)}</span></div>
+                            <b style="font-size: 0.85rem; color:#0f172a; word-break: break-all;">${i.stock} <span style="font-size:0.65rem; color:#2563eb; font-weight:normal; white-space:nowrap;">(상세보기)</span></b>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                            <span style="font-weight: bold; color: #2563eb; font-size: 0.85rem; white-space: nowrap;">${i.amount.toLocaleString()}원</span>
+                            <button class="delete-btn" onclick="deleteRecord(${i.id}, event)">✕</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('modalBody').innerHTML = html;
+            document.getElementById('detailModal').style.display = 'flex';
+        }
+
+        function openAccountModal(accountKey) {
+            currentAccountFilter = accountKey;
+            currentSelectedMonth = null;
+            
+            let titleName = `${currentYear}년 전체 배당 리스트`;
+            if(accountKey !== "전체") titleName = `${currentYear}년 ${getAccountBadgeName(accountKey)} 리스트`;
+            document.getElementById('modalTitle').innerText = titleName;
+
+            const filteredData = records.filter(item => {
+                const sameYear = item.date.substring(0, 4) === currentYear;
+                return accountKey === "전체" ? sameYear : sameYear && cleanAccountName(item.account) === accountKey;
+            }).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            let html = filteredData.length === 0 ? '<div style="text-align: center; color: #888; padding: 20px;">내역이 없습니다.</div>' : '';
+            
+            filteredData.forEach(i => {
+                html += `
+                    <div class="detail-item" onclick="inspectStockDetail('${i.stock}', '${i.date}', ${i.amount})">
+                        <div style="flex: 1; min-width: 0; padding-right: 8px;">
+                            <div style="font-size: 0.68rem; color: #64748b;">${i.date} <span style="background:#e2e8f0; padding:1px 4px; border-radius:4px; font-size:0.6rem; color:#334155; margin-left:3px;">${getAccountBadgeName(i.account)}</span></div>
+                            <b style="font-size: 0.85rem; color:#0f172a; word-break: break-all;">${i.stock} <span style="font-size:0.65rem; color:#2563eb; font-weight:normal; white-space:nowrap;">(상세보기)</span></b>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                            <span style="font-weight: bold; color: #2563eb; font-size: 0.85rem; white-space: nowrap;">${i.amount.toLocaleString()}원</span>
+                            <button class="delete-btn" onclick="deleteRecord(${i.id}, event)">✕</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('modalBody').innerHTML = html;
+            document.getElementById('detailModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('detailModal').style.display = 'none';
+            currentSelectedMonth = null;
+            currentAccountFilter = null;
+        }
+
+        function exportData() {
+            if (records.length === 0) { alert('데이터가 없습니다.'); return; }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ records, hiddenTags, availableYears }));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `dividend_V0.3_backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (Array.isArray(parsed)) {
+                        records = parsed.map(item => ({ ...item, account: cleanAccountName(item.account), stock: item.stock ? item.stock.toUpperCase() : '' }));
+                    } else if (parsed.records && Array.isArray(parsed.records)) {
+                        records = parsed.records.map(item => ({ ...item, account: cleanAccountName(item.account), stock: item.stock ? item.stock.toUpperCase() : '' }));
+                        if (parsed.hiddenTags) hiddenTags = parsed.hiddenTags.map(k => k.toUpperCase());
+                        if (parsed.availableYears) availableYears = parsed.availableYears;
+                    }
+                    
+                    records.forEach(r => {
+                        const y = r.date.substring(0, 4);
+                        if (!availableYears.includes(y)) availableYears.push(y);
+                    });
+                    availableYears.sort();
+
+                    renderYearOptions();
+                    saveToLocalStorage();
+                    updateUI();
+                    alert('복구 완료되었습니다.');
+                } catch (err) { alert('파일 오류 발생'); }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+    </script>
+</body>
+</html>
